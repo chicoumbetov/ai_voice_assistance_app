@@ -27,7 +27,9 @@ const App = () => {
 
   return (
     <div>
-      <h1>Alan AI Voice assistance application</h1>
+      <h1 style={{ justifyContent: "center" }}>
+        Alan AI Voice assistance application
+      </h1>
       <NewsCards articles={newsArticles} />
     </div>
   );

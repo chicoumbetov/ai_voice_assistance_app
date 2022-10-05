@@ -2,10 +2,6 @@ import { Grid, Grow } from "@material-ui/core";
 import NewsCard from "../NewsCard/NewsCard";
 import useStyles from "./styles";
 
-type NewsCardProps = {
-  name: string;
-};
-
 const NewsCards = (articles: any) => {
   const styles = useStyles();
   console.log("articles : ", articles);
