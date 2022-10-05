@@ -1,46 +1,121 @@
-# Getting Started with Create React App
+intent('What does this app do?', 'What can I do here?',
+reply('This is a news project.'));
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+// 7962f3986d3c49e587e70166284dd1b8
+const API_KEY = '7bdfb1b10aca41c6becea47611b7c35a';
+let savedArticles = [];
 
-## Available Scripts
+// News by Source
+intent('Give me the news from $(source* (.*))', (p) => {
+    let NEWS_API_URL = `https://newsapi.org/v2/top-headlines?apiKey=${API_KEY}`;
 
-In the project directory, you can run:
+    if(p.source.value) {
+        NEWS_API_URL = `${NEWS_API_URL}&sources=${p.source.value.toLowerCase().split(" ").join('-')}`
+    }
 
-### `npm start`
+    api.request(NEWS_API_URL, (error, response, body) => {
+        const { articles } = JSON.parse(body);
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+        if(!articles.length) {
+            p.play('Sorry, please try searching for news from a different source');
+            return;
+        }
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+        savedArticles = articles;
 
-### `npm test`
+        p.play({ command: 'newHeadlines', articles });
+        p.play(`Here are the (latest|recent) ${p.source.value}.`);
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+        p.play('Would you like me to read the headlines?');
+        p.then(confirmation);
+    });
 
-### `npm run build`
+})
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+// News by Term
+intent('what\'s up with $(term* (.*))', (p) => {
+    let NEWS_API_URL = `https://newsapi.org/v2/everything?apiKey=${API_KEY}`;
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+    if(p.term.value) {
+        NEWS_API_URL = `${NEWS_API_URL}&q=${p.term.value}`
+    }
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+    api.request(NEWS_API_URL, (error, response, body) => {
+        const { articles } = JSON.parse(body);
 
-### `npm run eject`
+        if(!articles.length) {
+            p.play('Sorry, please try searching for something else.');
+            return;
+        }
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+        savedArticles = articles;
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+        p.play({ command: 'newHeadlines', articles });
+        p.play(`Here are the (latest|recent) articles on ${p.term.value}.`);
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+        p.play('Would you like me to read the headlines?');
+        p.then(confirmation);
+    });
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+})
 
-## Learn More
+// News by Categories
+const CATEGORIES = ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology'];
+const CATEGORIES_INTENT = `${CATEGORIES.map((category) => `${category}~${category}`).join('|')}`;
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+intent(`(show|what is|tell me|what's|what are|what're|read) (the|) (recent|latest|) $(N news|headlines) (in|about|on|) $(C~ ${CATEGORIES_INTENT})`,
+`(read|show|get|bring me|give me) (the|) (recent|latest) $(C~ ${CATEGORIES_INTENT}) $(N news|headlines)`, (p) => {
+let NEWS_API_URL = `https://newsapi.org/v2/top-headlines?apiKey=${API_KEY}&country=us`;
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+    if(p.C.value) {
+        NEWS_API_URL = `${NEWS_API_URL}&category=${p.C.value}`
+    }
+
+    api.request(NEWS_API_URL, (error, response, body) => {
+        const { articles } = JSON.parse(body);
+
+        if(!articles.length) {
+            p.play('Sorry, please try searching for a different category.');
+            return;
+        }
+
+        savedArticles = articles;
+
+        p.play({ command: 'newHeadlines', articles });
+
+        if(p.C.value) {
+            p.play(`Here are the (latest|recent) articles on ${p.C.value}.`);
+        } else {
+            p.play(`Here are the (latest|recent) news`);
+        }
+
+        p.play('Would you like me to read the headlines?');
+        p.then(confirmation);
+    });
+
+});
+
+const confirmation = context(() => {
+intent('yes', async (p) => {
+for(let i = 0; i < savedArticles.length; i++){
+p.play({ command: 'highlight', article: savedArticles[i]});
+p.play(`${savedArticles[i].title}`);
+}
+})
+
+    intent('no', (p) => {
+        p.play('Sure, sounds good to me.')
+    })
+
+})
+
+intent('open (the|) (article|) (number|) $(number* (.*))', (p) => {
+if(p.number.value) {
+p.play({ command:'open', number: p.number.value, articles: savedArticles})
+}
+})
+
+intent('(go|) back', (p) => {
+p.play('Sure, going back');
+p.play({ command: 'newHeadlines', articles: []})
+})
